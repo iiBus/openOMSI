@@ -91,18 +91,20 @@ pub struct MapIndex {
 /// `pass_enter_min` (string 2, else 0) rounded, and `pass_exit` (string 3) rounded - or,
 /// without it, the mean of the two - never below 0. A boarding passenger draws where to get
 /// off among the stops ahead by these numbers (0x61baa8), so a stop with twice the number
-/// takes twice the riders; the stock maps put 10 on every stop.
+/// takes twice the riders; the stock maps put 10 on every stop.    
 pub fn stop_exit_weight(strings: &[String]) -> f32 {
     let (max, min) = stop_enter(strings);
     stop_num(strings, 3).unwrap_or((min + max) / 2.0).max(0.0)
 }
 
 fn stop_num(strings: &[String], i: usize) -> Option<f32> {
-    strings.get(i).map(|s| s.trim()).filter(|s| !s.is_empty()).and_then(|s| s.replace(',', ".").parse::<f64>().ok()).filter(|v| v.is_finite()).map(|v| v.round() as f32)
+    strings.get(i).map(|s| s.trim()).filter(|s| !s.is_empty()).and_then(|s| s.replace(',', ".").parse::<f64>().ok()).filter(|v| v.is_finite()).map(|v| v as f32)
 }
 
 /// A bus stop's `pass_enter_max` (string 1, else 1) and `pass_enter_min` (string 2, else
-/// 0), rounded, as Omsi.exe sets the station up (0x620058): how many people wait there.
+/// 0), as Omsi.exe sets the station up (0x620058): how many people wait there.
+// Not rounded here, decimal values survive until density is applied, rounding applies after that.
+// Should have no obvious or major impact, most maps use round numbers as is, result may be +- 1 passenger
 pub fn stop_enter(strings: &[String]) -> (f32, f32) {
     (stop_num(strings, 1).unwrap_or(1.0), stop_num(strings, 2).unwrap_or(0.0))
 }
@@ -1357,8 +1359,8 @@ mod tests {
         // no exit number: the mean of the two entering numbers
         assert_eq!(v(&["A", "6", "2"]), 4.0);
         assert_eq!(v(&["A", "", ""]), 0.5);
-        // rounded, never below 0, rubbish ignored
-        assert_eq!(v(&["A", "1", "0", "2.6"]), 3.0);
+        // never below 0, rubbish ignored
+        assert_eq!(v(&["A", "1", "0", "2.6"]), 2.6);
         assert_eq!(v(&["A", "1", "0", "-4"]), 0.0);
         assert_eq!(v(&["A", "1", "0", "x"]), 0.5);
     }
